@@ -1,3 +1,4 @@
+tabs = (' '*22)
 
 CATEGORIES = {
     'Web application framework Software': {
