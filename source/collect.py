@@ -2,13 +2,19 @@ import os
 import io
 import requests
 import json
+from colorama import Fore
+from . import tabs
+import tqdm
 
 class Collect:
     def __init__(self, docs_folder_github, folder_to_collect=None) -> None:
         docs_folder_github = docs_folder_github.replace('https://', '').replace('http://', '')
         docs_folder_github = docs_folder_github.split('/')
+
         self.branch = docs_folder_github[docs_folder_github.index('tree')+1]
+
         [docs_folder_github.remove(i) for i in ['github.com', 'tree', self.branch] if i in docs_folder_github]
+
         self.maintainer = docs_folder_github[0]
         self.repository_name = docs_folder_github[1]
         self.docslocate = '/'.join(docs_folder_github[2:])
@@ -16,28 +22,39 @@ class Collect:
         self.files = []
         self.folder_to_collect = self.repository_name if not folder_to_collect else folder_to_collect
         self.subpath = '/'.join(['collected', self.repository_name])
+
         try:
             os.makedirs(self.subpath)
         except FileExistsError:
             pass
-        print('Downloading '+self.repository_name+' docs...')
+
+        print(tabs+Fore.LIGHTGREEN_EX+'Downloading '+Fore.GREEN+self.repository_name+Fore.LIGHTGREEN_EX+' docs...')
+        print(Fore.LIGHTBLUE_EX)
+
         self.collect_all()
-        print('Complete!')
+
+        print(Fore.LIGHTGREEN_EX)
+        print(tabs+'Complete!')
 
     def collect_all(self, folder_name='', url=None):
-        for file in self.collect_by_type(_type='file', folder_name=folder_name, url=url):
-            try:
-                content = requests.get(file['download_url']).text
-                tocreatepath = os.path.join(self.subpath, file['path']).replace('\\', '/')
-                if not os.path.isdir('/'.join(tocreatepath.split('/')[:-1])):
-                    os.makedirs('/'.join(tocreatepath.split('/')[:-1]))
-                with io.open(tocreatepath, 'w+', encoding='UTF-8') as f:
-                    f.write(content)
-            except:
-                pass
+        collect_by_file_type = self.collect_by_type(_type='file', folder_name=folder_name, url=url)
+        collect_by_dir_type = self.collect_by_type(_type='dir', folder_name=folder_name)
         
+        with tqdm.tqdm(total=len(collect_by_file_type)) as pbar:
+            for file in collect_by_file_type:
+                try:
+                    tocreatepath = os.path.join(self.subpath, file['path']).replace('\\', '/')
+                    pbar.set_description('Writing '+tocreatepath)
+                    content = requests.get(file['download_url']).text
+                    if not os.path.isdir('/'.join(tocreatepath.split('/')[:-1])):
+                        os.makedirs('/'.join(tocreatepath.split('/')[:-1]))
+                    with io.open(tocreatepath, 'w+', encoding='UTF-8') as f:
+                        f.write(content)
+                except:
+                    pass
+                pbar.update(1)
         
-        for directory in self.collect_by_type(_type='dir', folder_name=folder_name):
+        for directory in collect_by_dir_type:
             try:
                 tocreatepath = os.path.join(self.subpath, directory['path']).replace('\\', '/')
                 os.makedirs(tocreatepath)
@@ -62,6 +79,4 @@ class Collect:
 
     
     def dir_empty(self, path):
-        return True if not os.listdir(path) else False 
-
-
+        return True if not os.listdir(path) else False
