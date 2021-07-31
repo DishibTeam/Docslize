@@ -15,5 +15,6 @@ Docslize is a collection of open source project documents that you can download 
 
 ## How To Use
 * Clone or download the project.
+* Install requirements libraries using `pip install -r requirements.txt`
 * Run the docslize.py file.
 * Enter the code of project to download the documents.
